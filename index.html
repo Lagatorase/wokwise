@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WokWise: carbon calculator for zi char stalls</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+  /* my colour set is based on old hawker centre signboards: cream, chilli red, kopi brown, jade green */
+  :root {
+    --cream: #fbf4e6;
+    --paper: #fffaf0;
+    --red: #c8312b;
+    --red-dark: #8f1f1a;
+    --kopi: #4a2f22;
+    --jade: #1f7a5a;
+    --jade-soft: #dcefe6;
+    --amber: #e0a526;
+    --ink: #2a1d16;
+    --muted: #7a6a5e;
+    --line: #e7dcc8;
+    --chalk: #2f3b35;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", "Noto Sans SC", system-ui, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  /* the tiled strip copies the wall tiles you see behind many stalls */
+  .tiles {
+    height: 14px;
+    background:
+      linear-gradient(90deg, var(--jade) 50%, #fff 50%) 0 0 / 28px 14px;
+    opacity: .85;
+  }
+  header {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sign {
+    background: var(--red);
+    color: #fff;
+    border: 4px solid var(--kopi);
+    border-radius: 10px;
+    padding: 12px 22px 10px;
+    box-shadow: 6px 6px 0 var(--kopi);
+  }
+  .sign small {
+    display: block;
+    font-weight: 600;
+    letter-spacing: .12em;
+    font-size: 12px;
+    opacity: .9;
+  }
+  .sign h1 {
+    margin: 2px 0 0;
+    font-family: "Archivo Black", "Noto Sans SC", sans-serif;
+    font-size: clamp(30px, 5vw, 44px);
+    line-height: 1;
+  }
+  .sign p { margin: 6px 0 0; font-size: 15px; }
+  .lang {
+    display: flex;
+    border: 2px solid var(--kopi);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  .lang button {
+    border: 0;
+    background: transparent;
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--kopi);
+  }
+  .lang button.on { background: var(--kopi); color: var(--cream); }
+  .intro {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 6px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 14px 20px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-family: "Archivo Black", "Noto Sans SC", sans-serif;
+    font-size: 19px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .num {
+    display: inline-grid;
+    place-items: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-size: 14px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 13.5px; font-weight: 600; color: var(--kopi); margin-bottom: 5px; }
+  input[type=number], select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 2px solid var(--line);
+    border-radius: 9px;
+    font: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  input[type=number]:focus, select:focus { outline: none; border-color: var(--jade); }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--kopi); }
+  .check input { width: 18px; height: 18px; accent-color: var(--jade); }
+
+  /* the menu section is drawn as a chalkboard like the ones zi char stalls hang up */
+  .chalk {
+    background: var(--chalk);
+    color: #f3efe4;
+    border: 8px solid #8a5a3a;
+    border-radius: 12px;
+    padding: 16px 16px 10px;
+    margin-bottom: 18px;
+  }
+  .chalk h2 {
+    margin: 0 0 4px;
+    font-family: "Caveat", "Noto Sans SC", cursive;
+    font-size: 30px;
+    font-weight: 600;
+  }
+  .chalk .hint { color: #c9d1c9; font-size: 13px; margin: 0 0 10px; }
+  .dish {
+    display: grid;
+    grid-template-columns: 14px 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255,255,255,.18);
+  }
+  .dish:last-child { border-bottom: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dish .name { font-size: 15px; }
+  .dish .name span { display: block; font-size: 12px; color: #b9c2ba; }
+  .dish .per { font-size: 12.5px; color: #dfe6df; text-align: right; white-space: nowrap; }
+  .step { display: flex; align-items: center; gap: 4px; }
+  .step button {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #cfd6cf;
+    background: transparent;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .step input {
+    width: 48px;
+    text-align: center;
+    padding: 5px 2px;
+    border-radius: 8px;
+    border: 2px solid #5c6a62;
+    background: #24302a;
+    color: #fff;
+    font: inherit;
+  }
+
+  /* results column stays in view on big screens so changes show up straight away */
+  .sticky { position: sticky; top: 14px; }
+  @media (max-width: 900px) { .sticky { position: static; } }
+  .total {
+    background: var(--kopi);
+    color: var(--cream);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  .total .big {
+    font-family: "Archivo Black", sans-serif;
+    font-size: clamp(38px, 6vw, 52px);
+    line-height: 1;
+  }
+  .total .unit { font-size: 14px; opacity: .85; }
+  .total .row { display: flex; gap: 22px; margin-top: 12px; flex-wrap: wrap; font-size: 14px; }
+  .total .row b { font-size: 18px; display: block; }
+  .bar {
+    display: flex;
+    height: 18px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 14px 0 8px;
+    background: rgba(255,255,255,.15);
+  }
+  .bar div { height: 100%; transition: width .35s ease; }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 13px; }
+  .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+  .equiv { margin-top: 10px; font-size: 13px; opacity: .85; }
+
+  .plan {
+    background: var(--jade-soft);
+    border: 2px solid var(--jade);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .plan h3 { margin: 0 0 6px; font-size: 15px; color: var(--jade); }
+  .plan .big { font-family: "Archivo Black", sans-serif; font-size: 34px; color: var(--jade); line-height: 1.1; }
+  .plan .sub { font-size: 14px; color: var(--kopi); }
+  .meter { height: 10px; background: #fff; border-radius: 999px; margin-top: 10px; overflow: hidden; }
+  .meter div { height: 100%; background: var(--jade); width: 0; transition: width .35s ease; }
+
+  .rec {
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    transition: border-color .2s, background .2s;
+  }
+  .rec.on { border-color: var(--jade); background: #f4fbf7; }
+  .rec .top { display: flex; gap: 10px; align-items: flex-start; }
+  .rec .top input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--jade); flex: none; }
+  .rec h4 { margin: 0; font-size: 15px; }
+  .rec p { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+  .rec .save { margin-left: auto; text-align: right; white-space: nowrap; font-weight: 700; color: var(--jade); font-size: 14px; }
+  .rec .save small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+  .rec .slide { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--kopi); }
+  .rec .slide input { flex: 1; accent-color: var(--red); }
+
+  .cmp { display: grid; gap: 12px; }
+  .cmp-item h4 { margin: 0 0 6px; font-size: 14px; color: var(--kopi); }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .side {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .side.usual { background: #fbe4e1; border: 2px solid #f0b8b2; }
+  .side.low { background: var(--jade-soft); border: 2px solid #a9d6c2; }
+  .side b { display: block; font-size: 20px; font-family: "Archivo Black", sans-serif; margin-top: 2px; }
+  .side.usual b { color: var(--red-dark); }
+  .side.low b { color: var(--jade); }
+  .pill { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--jade); }
+
+  details { font-size: 13.5px; color: var(--kopi); }
+  details summary { cursor: pointer; font-weight: 700; }
+  details ul { padding-left: 18px; margin: 8px 0 0; }
+  details li { margin-bottom: 4px; }
+  footer { text-align: center; font-size: 12.5px; color: var(--muted); padding: 0 20px 30px; }
+  .btn {
+    border: 2px solid var(--kopi);
+    background: var(--paper);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--kopi);
+  }
+</style>
+</head>
+<body>
+<div class="tiles"></div>
+
+<header>
+  <div class="sign">
+    <small>STALL #01-88</small>
+    <h1>WokWise</h1>
+    <p data-i18n="tagline">Carbon calculator for zi char stalls</p>
+  </div>
+  <div class="lang" role="group" aria-label="Language">
+    <button id="btnEn" class="on" type="button">English</button>
+    <button id="btnZh" type="button">中文</button>
+  </div>
+</header>
+<p class="intro" data-i18n="intro">Key in how your stall runs in a normal week. WokWise works out the carbon from your gas, power, takeaway boxes and the dishes you sell, puts each one beside a lower-carbon way, and ranks the changes that cut the most.</p>
+
+<main>
+  <!-- left column: the stall owner's inputs -->
+  <section>
+    <div class="card">
+      <h2><span class="num">1</span><span data-i18n="sec1">Kitchen fuel</span></h2>
+      <div class="grid2">
+        <div>
+          <label for="cyl" data-i18n="cyl">LPG cylinders used per week (14 kg)</label>
+          <input type="number" id="cyl" min="0" step="0.5" value="5">
+        </div>
+        <div>
+          <label for="days" data-i18n="days">Days open per week</label>
+          <input type="number" id="days" min="1" max="7" step="1" value="6">
+        </div>
+        <div>
+          <label for="price" data-i18n="price">Price you pay per cylinder ($)</label>
+          <input type="number" id="price" min="0" step="1" value="35">
+        </div>
+        <div>
+          <label for="tariff" data-i18n="tariff">Your electricity rate ($ per kWh)</label>
+          <input type="number" id="tariff" min="0" step="0.01" value="0.30">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span><span data-i18n="sec2">Fridges, ice and power</span></h2>
+      <div class="grid2">
+        <div>
+          <label for="chill" data-i18n="chill">Chillers</label>
+          <input type="number" id="chill" min="0" step="1" value="2">
+        </div>
+        <div>
+          <label for="frz" data-i18n="frz">Freezers</label>
+          <input type="number" id="frz" min="0" step="1" value="1">
+        </div>
+        <div>
+          <label for="ice" data-i18n="ice">Ice bought per day (kg)</label>
+          <input type="number" id="ice" min="0" step="1" value="20">
+        </div>
+        <div>
+          <label for="other" data-i18n="other">Other power per day (kWh): hood fan, lights, rice cooker</label>
+          <input type="number" id="other" min="0" step="1" value="10">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">3</span><span data-i18n="sec3">Takeaway</span></h2>
+      <div class="grid2">
+        <div>
+          <label for="orders" data-i18n="orders">Takeaway orders per day</label>
+          <input type="number" id="orders" min="0" step="1" value="40">
+        </div>
+        <div>
+          <label for="perOrder" data-i18n="perOrder">Containers per order</label>
+          <input type="number" id="perOrder" min="0" step="1" value="3">
+        </div>
+        <div>
+          <label for="box" data-i18n="box">Container type</label>
+          <select id="box">
+            <option value="pp" data-i18n="boxPP">Plastic (PP) container</option>
+            <option value="eps" data-i18n="boxEPS">Styrofoam box</option>
+            <option value="paper" data-i18n="boxPaper">Paper or bagasse box</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:8px;">
+          <label class="check"><input type="checkbox" id="bag" checked><span data-i18n="bag">Plastic bag with every order</span></label>
+          <label class="check"><input type="checkbox" id="cutlery" checked><span data-i18n="cutlery">Cutlery set with every order</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="chalk">
+      <h2><span data-i18n="sec4">Today's menu: plates sold per day</span></h2>
+      <p class="hint" data-i18n="sec4hint">Number beside each dish is the estimated kg CO2e per plate, mostly from the main ingredient.</p>
+      <div id="menu"></div>
+    </div>
+  </section>
+
+  <!-- right column: totals, plan, recommendations and comparisons -->
+  <section class="sticky">
+    <div class="total">
+      <div class="unit" data-i18n="weekLabel">Your stall this week</div>
+      <div class="big" id="tWeek">0</div>
+      <div class="unit" data-i18n="kgWeek">kg CO2e per week</div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="legend"></div>
+      <div class="row">
+        <div><b id="tMonth">0</b><span data-i18n="perMonth">kg per month</span></div>
+        <div><b id="tYear">0</b><span data-i18n="perYear">tonnes per year</span></div>
+      </div>
+      <div class="equiv" id="equiv"></div>
+    </div>
+
+    <div class="plan">
+      <h3 data-i18n="planTitle">With the swaps you ticked</h3>
+      <div class="big" id="pWeek">0</div>
+      <div class="sub" id="pSub"></div>
+      <div class="meter"><div id="pMeter"></div></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="recTitle">Recommended swaps</h2>
+      <div id="recs"></div>
+      <button class="btn" id="btnAll" type="button" data-i18n="tickAll">Tick all</button>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="cmpTitle">Compare: usual way vs low-carbon way</h2>
+      <div class="cmp" id="cmp"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary data-i18n="howTitle">How the numbers are worked out</summary>
+        <ul id="how"></ul>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer data-i18n="foot">Estimates only, built for a school project. Numbers use public average emission factors, so your own stall may differ.</footer>
+
+<script>
+// ---------- emission factors ----------
+// i keep every factor in one object so the assumptions are easy to check and change
+const F = {
+  grid: 0.412,          // kg co2 per kWh, singapore grid emission factor (EMA, 2023)
+  lpgPerKg: 2.98,       // kg co2 per kg lpg burned (IPCC default)
+  lpgKwhPerKg: 12.8,    // energy in 1 kg lpg, about 46 MJ
+  cylKg: 14,            // standard commercial cylinder size
+  gasEff: 0.35,         // share of gas heat that reaches a stockpot or steamer
+  indEff: 0.85,         // share of electric heat that reaches the pot on induction
+  chillKwh: 5,          // kWh per day for a 2-door commercial chiller
+  frzKwh: 7,            // kWh per day for a commercial chest or upright freezer
+  icePerKg: 0.05,       // kg co2e per kg ice, making plus delivery
+  box: { pp: 0.07, eps: 0.04, paper: 0.05 }, // kg co2e per container
+  bag: 0.02,            // kg co2e per plastic bag
+  cutlery: 0.01,        // kg co2e per disposable spoon, fork and chopstick set
+  carKm: 0.19,          // kg co2 per km for a petrol car, used for the "same as driving" line
+  weeksPerMonth: 4.33
+};
+
+// ---------- menu ----------
+// per-plate values come from main ingredient weight x Poore and Nemecek (2018) kg co2e per kg food
+// beef 99.5, prawns (farmed) 26.9, pork 12.3, chicken 9.9, fish (farmed) 13.6, eggs 4.7, rice 4.5, tofu 3.2, veg 0.5
+const DISHES = [
+  { id: "beefhf",  en: "Beef hor fun",              zh: "滑蛋牛肉河粉", f: 10.6, n: 12, beef: true },
+  { id: "prawn",   en: "Cereal prawns",             zh: "麦片虾",       f: 5.7,  n: 10, meat: true },
+  { id: "fish",    en: "Steamed fish",              zh: "清蒸鱼",       f: 4.1,  n: 6,  meat: true },
+  { id: "pork",    en: "Sweet and sour pork",       zh: "咕噜肉",       f: 2.7,  n: 15, meat: true },
+  { id: "chicken", en: "Har cheong gai",            zh: "虾酱鸡",       f: 2.6,  n: 18, meat: true },
+  { id: "tofu",    en: "Hotplate tofu",             zh: "铁板豆腐",     f: 1.7,  n: 14 },
+  { id: "rice",    en: "Egg fried rice",            zh: "蛋炒饭",       f: 0.9,  n: 25 },
+  { id: "vegtofu", en: "Claypot tofu with veg",     zh: "砂煲豆腐青菜", f: 1.0,  n: 4 },
+  { id: "kangkong",en: "Sambal kangkong",           zh: "参巴空心菜",   f: 0.4,  n: 20 }
+];
+const CHICKEN_HF = 3.2; // chicken hor fun: 100 g chicken in place of beef, same noodles and egg
+const LOW_DISH = 1.0;   // claypot tofu with veg is my stand-in plant-forward dish
+
+// ---------- text in both languages ----------
+// i put all words in one dictionary so the language switch only needs to swap keys
+const T = {
+  en: {
+    tagline: "Carbon calculator for zi char stalls",
+    intro: "Key in how your stall runs in a normal week. WokWise works out the carbon from your gas, power, takeaway boxes and the dishes you sell, puts each one beside a lower-carbon way, and ranks the changes that cut the most.",
+    sec1: "Kitchen fuel", cyl: "LPG cylinders used per week (14 kg)", days: "Days open per week",
+    price: "Price you pay per cylinder ($)", tariff: "Your electricity rate ($ per kWh)",
+    sec2: "Fridges, ice and power", chill: "Chillers", frz: "Freezers", ice: "Ice bought per day (kg)",
+    other: "Other power per day (kWh): hood fan, lights, rice cooker",
+    sec3: "Takeaway", orders: "Takeaway orders per day", perOrder: "Containers per order", box: "Container type",
+    boxPP: "Plastic (PP) container", boxEPS: "Styrofoam box", boxPaper: "Paper or bagasse box",
+    bag: "Plastic bag with every order", cutlery: "Cutlery set with every order",
+    sec4: "Today's menu: plates sold per day",
+    sec4hint: "Number beside each dish is the estimated kg CO2e per plate, mostly from the main ingredient.",
+    perPlate: "kg/plate",
+    weekLabel: "Your stall this week", kgWeek: "kg CO2e per week", perMonth: "kg per month", perYear: "tonnes per year",
+    catFuel: "Gas cooking", catPower: "Electricity", catPack: "Packaging", catFood: "Ingredients",
+    equiv: "Over a year that is like driving a petrol car {x} km.",
+    planTitle: "With the swaps you ticked",
+    planSub: "kg CO2e per week, {p}% less than now.",
+    planNone: "Tick a swap below to see your new total.",
+    planMoney: " About ${m} saved per month.",
+    recTitle: "Recommended swaps", tickAll: "Tick all",
+    perWeek: "kg/week", perMonthMoney: "${m}/month",
+    r_ind: "Move boiling and steaming to induction",
+    r_ind_d: "Keep the wok burner for wok hei. Stockpots and steamers lose much less heat on an induction plate.",
+    r_ind_s: "Gas use moved",
+    r_beef: "Offer chicken hor fun beside beef",
+    r_beef_d: "Put chicken first on the board and let customers upgrade to beef. Beef is the heaviest item on most menus.",
+    r_beef_s: "Beef orders that switch",
+    r_veg: "Push a tofu and veg dish of the day",
+    r_veg_d: "A cheaper daily special pulls some orders away from prawn, fish and meat plates.",
+    r_veg_s: "Meat and seafood plates that switch",
+    r_byo: "20 cents off for bringing your own container",
+    r_byo_d: "Regulars bring tingkat or tubs, and you buy fewer boxes.",
+    r_byo_s: "Orders that bring their own",
+    r_ask: "Give bags and cutlery only when asked",
+    r_ask_d: "Many takeaway orders are eaten at home or the office, so the spoon and bag go straight to the bin.",
+    r_ask_s: "Orders that skip them",
+    r_fridge: "Clean coils, fix door seals, set chillers to 4°C",
+    r_fridge_d: "Dusty coils and leaky seals make compressors run longer. Swapping an old unit for one with more NEA ticks saves more.",
+    r_fridge_s: "Fridge power saved",
+    r_ice: "Keep ice in an insulated ice box",
+    r_ice_d: "Less ice melts away before you use it, so you can order less each day.",
+    r_ice_s: "Less ice bought",
+    noSave: "Nothing to save here with your current inputs.",
+    cmpTitle: "Compare: usual way vs low-carbon way",
+    usual: "Usual", low: "Low-carbon",
+    c_heat: "Heat from one 14 kg gas cylinder, used on stockpots",
+    c_heat_u: "Burn the LPG", c_heat_l: "Same heat on induction",
+    c_order: "One takeaway order at your stall",
+    c_order_u: "Your current pack", c_order_l: "Own container, no bag or spoon",
+    c_box: "Per container",
+    c_dish: "One plate of hor fun", c_dish_u: "Beef", c_dish_l: "Chicken",
+    c_week: "Your menu over one week",
+    c_week_u: "As sold now", c_week_l: "With chicken and tofu swaps",
+    less: "{p}% less",
+    epsNote: "Styrofoam is lowest in carbon per box but cannot be recycled in Singapore, so own containers win on both.",
+    howTitle: "How the numbers are worked out",
+    how: [
+      "Gas: cylinders x 14 kg x 2.98 kg CO2 per kg LPG.",
+      "Induction swap: the same useful heat at 35% gas efficiency vs 85% induction efficiency, then x 0.412 kg CO2 per kWh (Singapore grid, EMA 2023).",
+      "Fridges run 7 days a week: chiller about 5 kWh a day, freezer about 7 kWh a day. Other power and ice only count on open days.",
+      "Packaging per item: PP box 0.07, styrofoam 0.04, paper or bagasse 0.05, bag 0.02, cutlery set 0.01 kg CO2e.",
+      "Dishes: main ingredient weight x global average food footprints from Poore and Nemecek (2018), via Our World in Data.",
+      "Money saved uses the cylinder price and electricity rate you typed in, so change those to match your bills."
+    ],
+    foot: "Estimates only, built for a school project. Numbers use public average emission factors, so your own stall may differ."
+  },
+  zh: {
+    tagline: "煮炒摊碳排放计算器",
+    intro: "输入您的摊位平常一周的情况。WokWise 会算出煤气、用电、打包盒和所卖菜色的碳排放，和低碳做法对比，并排出减碳最多的改变。",
+    sec1: "厨房燃料", cyl: "每周用几罐煤气 (14公斤)", days: "每周开几天",
+    price: "每罐煤气价钱 ($)", tariff: "电费 ($/度)",
+    sec2: "冰箱、冰块和用电", chill: "冷藏柜", frz: "冷冻柜", ice: "每天买多少冰 (公斤)",
+    other: "其他用电 (度/天)：抽风机、灯、饭锅",
+    sec3: "打包", orders: "每天打包单数", perOrder: "每单几个盒", box: "饭盒种类",
+    boxPP: "塑料盒 (PP)", boxEPS: "泡沫盒", boxPaper: "纸盒或蔗渣盒",
+    bag: "每单都给塑料袋", cutlery: "每单都给餐具",
+    sec4: "今日菜单：每天卖几盘",
+    sec4hint: "菜名旁的数字是每盘大约多少公斤二氧化碳当量，主要来自主食材。",
+    perPlate: "公斤/盘",
+    weekLabel: "您的摊位本周", kgWeek: "公斤二氧化碳当量 / 周", perMonth: "公斤 / 月", perYear: "吨 / 年",
+    catFuel: "煤气煮食", catPower: "用电", catPack: "包装", catFood: "食材",
+    equiv: "一年下来，相当于汽油车开 {x} 公里。",
+    planTitle: "采用您勾选的改变后",
+    planSub: "公斤 / 周，比现在少 {p}%。",
+    planNone: "勾选下面的改变，就能看到新的总数。",
+    planMoney: " 每月约省 ${m}。",
+    recTitle: "建议改变", tickAll: "全部勾选",
+    perWeek: "公斤/周", perMonthMoney: "每月 ${m}",
+    r_ind: "把煮汤、蒸菜改用电磁炉",
+    r_ind_d: "炒锅照用煤气保住锅气。汤锅和蒸笼用电磁炉，热量浪费少很多。",
+    r_ind_s: "转用电的煤气份量",
+    r_beef: "牛肉河粉旁加鸡肉河粉",
+    r_beef_d: "菜单上先写鸡肉，顾客要牛肉才加钱。牛肉是菜单上碳排放最高的。",
+    r_beef_s: "改点鸡肉的牛肉单",
+    r_veg: "推出每日豆腐青菜特价",
+    r_veg_d: "便宜的每日特价会把一些虾、鱼、肉的单吸过来。",
+    r_veg_s: "改点豆腐青菜的荤菜单",
+    r_byo: "自带饭盒减2毛",
+    r_byo_d: "熟客带格子饭盒或保鲜盒，您也少买饭盒。",
+    r_byo_s: "自带饭盒的单",
+    r_ask: "顾客要才给袋子和餐具",
+    r_ask_d: "很多打包是带回家或办公室吃，汤匙和袋子直接进垃圾桶。",
+    r_ask_s: "不拿的单",
+    r_fridge: "清洁冷凝器、修门封、冷藏柜设4°C",
+    r_fridge_d: "冷凝器积尘、门封漏气，压缩机就要多做工。换成能源标签多勾的新冰箱省更多。",
+    r_fridge_s: "冰箱省电",
+    r_ice: "用保温冰箱装冰",
+    r_ice_d: "冰块融得少，每天可以少订一些。",
+    r_ice_s: "少买的冰",
+    noSave: "按您现在的输入，这项没有可省的。",
+    cmpTitle: "对比：平常做法 vs 低碳做法",
+    usual: "平常", low: "低碳",
+    c_heat: "一罐14公斤煤气的热量，用在汤锅上",
+    c_heat_u: "烧煤气", c_heat_l: "同样热量用电磁炉",
+    c_order: "您摊位的一单打包",
+    c_order_u: "现在的包装", c_order_l: "自带饭盒，不拿袋子餐具",
+    c_box: "每个饭盒",
+    c_dish: "一盘河粉", c_dish_u: "牛肉", c_dish_l: "鸡肉",
+    c_week: "您的菜单一周",
+    c_week_u: "现在卖的", c_week_l: "加上鸡肉和豆腐改变",
+    less: "少 {p}%",
+    epsNote: "泡沫盒每个的碳排放最低，但在新加坡不能回收，所以自带饭盒两方面都更好。",
+    howTitle: "计算方法",
+    how: [
+      "煤气：罐数 x 14公斤 x 每公斤煤气2.98公斤二氧化碳。",
+      "改电磁炉：同样的有效热量，煤气效率35%、电磁炉85%，再乘以每度电0.412公斤 (新加坡电网，EMA 2023)。",
+      "冰箱每周7天运作：冷藏柜每天约5度，冷冻柜每天约7度。其他用电和冰块只算开档的日子。",
+      "每件包装：塑料盒0.07、泡沫盒0.04、纸盒或蔗渣盒0.05、袋子0.02、餐具0.01公斤。",
+      "菜色：主食材重量 x Poore 和 Nemecek (2018) 的全球平均食物碳足迹，资料来自 Our World in Data。",
+      "省钱金额用您输入的煤气价和电费计算，请按您的账单修改。"
+    ],
+    foot: "仅为估算，为学校项目制作。数字用的是公开的平均排放系数，您的摊位可能不同。"
+  }
+};
+
+let lang = "en";
+// t() fills {x} style blanks so one sentence works for any number
+function t(key, vars) {
+  let s = T[lang][key];
+  if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+  return s;
+}
+
+// ---------- recommendations setup ----------
+// each swap has a slider amount (%) and a ticked state that feeds the plan total
+const RECS = [
+  { id: "ind",    pct: 30, min: 10, max: 60, on: false },
+  { id: "beef",   pct: 40, min: 10, max: 80, on: false },
+  { id: "veg",    pct: 10, min: 5,  max: 30, on: false },
+  { id: "byo",    pct: 20, min: 5,  max: 50, on: false },
+  { id: "ask",    pct: 50, min: 20, max: 80, on: false },
+  { id: "fridge", pct: 15, min: 10, max: 30, on: false },
+  { id: "ice",    pct: 30, min: 10, max: 50, on: false }
+];
+
+// ---------- saving and loading ----------
+// i save the inputs in localStorage so the stall owner does not retype them, wrapped in try in case storage is blocked
+const KEY = "wokwise-v1";
+function save() {
+  try {
+    const data = { lang, inputs: {}, dishes: {}, recs: RECS.map(r => ({ id: r.id, pct: r.pct, on: r.on })) };
+    ["cyl","days","price","tariff","chill","frz","ice","other","orders","perOrder","box"].forEach(id => data.inputs[id] = el(id).value);
+    data.inputs.bag = el("bag").checked;
+    data.inputs.cutlery = el("cutlery").checked;
+    DISHES.forEach(d => data.dishes[d.id] = d.n);
+    localStorage.setItem(KEY, JSON.stringify(data));
+  } catch (e) { /* storage not available, the tool still works without it */ }
+}
+function load() {
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!data) return;
+    lang = data.lang || "en";
+    for (const id in data.inputs) {
+      if (id === "bag" || id === "cutlery") el(id).checked = data.inputs[id];
+      else el(id).value = data.inputs[id];
+    }
+    DISHES.forEach(d => { if (data.dishes[d.id] != null) d.n = data.dishes[d.id]; });
+    (data.recs || []).forEach(s => {
+      const r = RECS.find(x => x.id === s.id);
+      if (r) { r.pct = s.pct; r.on = s.on; }
+    });
+  } catch (e) { /* bad or missing saved data, so i just keep the defaults */ }
+}
+
+// ---------- helpers ----------
+const el = id => document.getElementById(id);
+// num() turns an empty or negative box into 0 so the maths never breaks
+const num = id => Math.max(0, parseFloat(el(id).value) || 0);
+// fmt() shows one decimal for small numbers and whole numbers with commas for big ones
+function fmt(x) {
+  if (Math.abs(x) < 10) return (Math.round(x * 10) / 10).toLocaleString();
+  return Math.round(x).toLocaleString();
+}
+// dotColour() gives a traffic light per dish: green under 1.5, amber under 4, red above
+function dotColour(f) {
+  if (f < 1.5) return "#5fc48f";
+  if (f < 4) return "#e0a526";
+  return "#e5553f";
+}
+
+// ---------- core calculation ----------
+// calc() returns weekly kg co2e per category, with any ticked swaps applied when plan is true
+function calc(plan) {
+  const r = id => {
+    const x = RECS.find(q => q.id === id);
+    return plan && x.on ? x.pct / 100 : 0;
+  };
+  const days = Math.min(7, num("days"));
+  const cyl = num("cyl");
+  const tariff = num("tariff");
+  const price = num("price");
+
+  // fuel: lpg burned, with part of it moved to induction electricity
+  const lpgKg = cyl * F.cylKg;
+  const moved = lpgKg * r("ind");
+  const fuel = (lpgKg - moved) * F.lpgPerKg;
+  const indKwh = moved * F.lpgKwhPerKg * F.gasEff / F.indEff;
+
+  // power: fridges every day, other loads and ice only on open days
+  const fridgeKwh = (num("chill") * F.chillKwh + num("frz") * F.frzKwh) * 7 * (1 - r("fridge"));
+  const otherKwh = num("other") * days;
+  const iceKg = num("ice") * days * (1 - r("ice"));
+  const power = (fridgeKwh + otherKwh + indKwh) * F.grid + iceKg * F.icePerKg;
+
+  // packaging: own-container orders skip boxes, ask-first orders skip bag and cutlery
+  const orders = num("orders") * days;
+  const boxEach = F.box[el("box").value];
+  const extras = (el("bag").checked ? F.bag : 0) + (el("cutlery").checked ? F.cutlery : 0);
+  const byo = r("byo");
+  const ask = r("ask");
+  // i treat byo orders as also skipping extras, then ask-first applies to the rest
+  const pack = orders * (1 - byo) * (num("perOrder") * boxEach + extras * (1 - ask));
+
+  // food: beef orders can switch to chicken, other meat and seafood plates can switch to tofu and veg
+  let food = 0;
+  DISHES.forEach(d => {
+    const n = Math.max(0, d.n) * days;
+    if (d.beef) {
+      const sw = n * r("beef");
+      food += (n - sw) * d.f + sw * CHICKEN_HF;
+    } else if (d.meat) {
+      const sw = n * r("veg");
+      food += (n - sw) * d.f + sw * LOW_DISH;
+    } else {
+      food += n * d.f;
+    }
+  });
+
+  // weekly running cost of the parts that the swaps change, so i can show money saved
+  const cost = (lpgKg - moved) / F.cylKg * price + (fridgeKwh + indKwh) * tariff;
+
+  return { fuel, power, pack, food, total: fuel + power + pack + food, cost };
+}
+
+// saving() works out what one swap alone saves, by ticking only that swap
+function saving(id) {
+  const states = RECS.map(x => x.on);
+  RECS.forEach(x => x.on = (x.id === id));
+  const base = calc(false), p = calc(true);
+  RECS.forEach((x, i) => x.on = states[i]);
+  return { kg: base.total - p.total, money: (base.cost - p.cost) * F.weeksPerMonth };
+}
+
+// ---------- drawing the page ----------
+const CATS = [
+  { k: "fuel",  label: "catFuel",  c: "#e5553f" },
+  { k: "power", label: "catPower", c: "#e0a526" },
+  { k: "pack",  label: "catPack",  c: "#9ab7c9" },
+  { k: "food",  label: "catFood",  c: "#5fc48f" }
+];
+
+// buildMenu() draws the chalkboard rows with plus and minus steppers
+function buildMenu() {
+  const box = el("menu");
+  box.innerHTML = "";
+  DISHES.forEach(d => {
+    const row = document.createElement("div");
+    row.className = "dish";
+    row.innerHTML =
+      `<div class="dot" style="background:${dotColour(d.f)}"></div>
+       <div class="name">${lang === "en" ? d.en : d.zh}<span>${lang === "en" ? d.zh : d.en}</span></div>
+       <div class="per">${d.f} ${t("perPlate")}</div>
+       <div class="step">
+         <button type="button" aria-label="minus">−</button>
+         <input type="number" min="0" value="${d.n}" aria-label="${d.en}">
+         <button type="button" aria-label="plus">+</button>
+       </div>`;
+    const [minus, plus] = row.querySelectorAll("button");
+    const inp = row.querySelector("input");
+    // each stepper changes the plates by one and refreshes everything
+    minus.onclick = () => { d.n = Math.max(0, d.n - 1); inp.value = d.n; update(); };
+    plus.onclick = () => { d.n = d.n + 1; inp.value = d.n; update(); };
+    inp.oninput = () => { d.n = Math.max(0, parseFloat(inp.value) || 0); update(); };
+    box.appendChild(row);
+  });
+}
+
+// buildRecs() draws each swap card once, then update() only refreshes the numbers
+function buildRecs() {
+  const box = el("recs");
+  box.innerHTML = "";
+  RECS.forEach(r => {
+    const div = document.createElement("div");
+    div.className = "rec";
+    div.id = "rec-" + r.id;
+    div.innerHTML =
+      `<div class="top">
+         <input type="checkbox" ${r.on ? "checked" : ""} aria-label="${t("r_" + r.id)}">
+         <div><h4>${t("r_" + r.id)}</h4><p>${t("r_" + r.id + "_d")}</p></div>
+         <div class="save"><span class="kg"></span><small class="money"></small></div>
+       </div>
+       <div class="slide">
+         <span>${t("r_" + r.id + "_s")}</span>
+         <input type="range" min="${r.min}" max="${r.max}" step="5" value="${r.pct}">
+         <b class="pct">${r.pct}%</b>
+       </div>`;
+    div.querySelector("input[type=checkbox]").onchange = e => { r.on = e.target.checked; update(); };
+    div.querySelector("input[type=range]").oninput = e => {
+      r.pct = +e.target.value;
+      div.querySelector(".pct").textContent = r.pct + "%";
+      update();
+    };
+    box.appendChild(div);
+  });
+}
+
+// side() is a small template for one usual or low-carbon box in the compare section
+function side(kind, title, kg) {
+  return `<div class="side ${kind}">${t(kind)}: ${title}<b>${fmt(kg)} kg</b></div>`;
+}
+function pctLess(a, b) { return a > 0 ? Math.round((1 - b / a) * 100) : 0; }
+
+// buildCompare() places the user's usual choice next to the low-carbon option
+function buildCompare() {
+  // heat from one cylinder used on stockpots
+  const gasKg = F.cylKg * F.lpgPerKg;
+  const indKg = F.cylKg * F.lpgKwhPerKg * F.gasEff / F.indEff * F.grid;
+
+  // one takeaway order with the stall's own setup vs an own-container order
+  const boxEach = F.box[el("box").value];
+  const extras = (el("bag").checked ? F.bag : 0) + (el("cutlery").checked ? F.cutlery : 0);
+  const orderKg = num("perOrder") * boxEach + extras;
+
+  // beef vs chicken hor fun per plate
+  const beef = DISHES.find(d => d.beef).f;
+
+  // whole menu for a week, now vs with the beef and tofu swaps at their slider amounts
+  const days = Math.min(7, num("days"));
+  const bPct = RECS.find(r => r.id === "beef").pct / 100;
+  const vPct = RECS.find(r => r.id === "veg").pct / 100;
+  let now = 0, swapped = 0;
+  DISHES.forEach(d => {
+    const n = d.n * days;
+    now += n * d.f;
+    if (d.beef) swapped += n * (1 - bPct) * d.f + n * bPct * CHICKEN_HF;
+    else if (d.meat) swapped += n * (1 - vPct) * d.f + n * vPct * LOW_DISH;
+    else swapped += n * d.f;
+  });
+
+  // per-container bars so the stall owner can see all three box types at once
+  const boxes = [["pp","boxPP"],["eps","boxEPS"],["paper","boxPaper"]]
+    .map(([k, lbl]) => `<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:3px;">
+        <span>${t(lbl)}</span><b>${F.box[k]} kg</b></div>`).join("");
+
+  el("cmp").innerHTML = `
+    <div class="cmp-item"><h4>${t("c_heat")}</h4>
+      <div class="vs">${side("usual", t("c_heat_u"), gasKg)}${side("low", t("c_heat_l"), indKg)}</div>
+      <span class="pill">${t("less", { p: pctLess(gasKg, indKg) })}</span></div>
+    <div class="cmp-item"><h4>${t("c_order")}</h4>
+      <div class="vs">${side("usual", t("c_order_u"), orderKg)}${side("low", t("c_order_l"), 0)}</div>
+      <span class="pill">${t("less", { p: orderKg > 0 ? 100 : 0 })}</span>
+      <div style="margin-top:8px;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;">
+        <b style="font-size:13px;">${t("c_box")}</b>${boxes}
+        <p style="margin:6px 0 0;font-size:12px;color:var(--muted);">${t("epsNote")}</p></div></div>
+    <div class="cmp-item"><h4>${t("c_dish")}</h4>
+      <div class="vs">${side("usual", t("c_dish_u"), beef)}${side("low", t("c_dish_l"), CHICKEN_HF)}</div>
+      <span class="pill">${t("less", { p: pctLess(beef, CHICKEN_HF) })}</span></div>
+    <div class="cmp-item"><h4>${t("c_week")}</h4>
+      <div class="vs">${side("usual", t("c_week_u"), now)}${side("low", t("c_week_l"), swapped)}</div>
+      <span class="pill">${t("less", { p: pctLess(now, swapped) })}</span></div>`;
+}
+
+// update() is the main refresh: totals, breakdown bar, plan, swap savings and comparisons
+function update() {
+  const base = calc(false);
+  const plan = calc(true);
+
+  // totals in week, month and year
+  el("tWeek").textContent = fmt(base.total);
+  el("tMonth").textContent = fmt(base.total * F.weeksPerMonth);
+  el("tYear").textContent = (base.total * 52 / 1000).toFixed(1);
+  el("equiv").textContent = t("equiv", { x: Math.round(base.total * 52 / F.carKm).toLocaleString() });
+
+  // stacked bar and legend for the four categories
+  el("bar").innerHTML = CATS.map(c =>
+    `<div style="width:${base.total ? base[c.k] / base.total * 100 : 0}%;background:${c.c}"></div>`).join("");
+  el("legend").innerHTML = CATS.map(c =>
+    `<div><span style="background:${c.c}"></span>${t(c.label)}: ${fmt(base[c.k])} kg (${base.total ? Math.round(base[c.k] / base.total * 100) : 0}%)</div>`).join("");
+
+  // plan box only shows a cut when at least one swap is ticked
+  const anyOn = RECS.some(r => r.on);
+  const cut = base.total ? (1 - plan.total / base.total) * 100 : 0;
+  el("pWeek").textContent = fmt(plan.total);
+  const money = (base.cost - plan.cost) * F.weeksPerMonth;
+  el("pSub").textContent = anyOn
+    ? t("planSub", { p: Math.round(cut) }) + (money > 0.5 ? t("planMoney", { m: Math.round(money) }) : "")
+    : t("planNone");
+  el("pMeter").style.width = Math.max(0, Math.min(100, cut)) + "%";
+
+  // each swap shows its own saving, then i sort the cards so the biggest cut is on top
+  const order = RECS.map(r => ({ r, s: saving(r.id) })).sort((a, b) => b.s.kg - a.s.kg);
+  const box = el("recs");
+  order.forEach(({ r, s }) => {
+    const div = el("rec-" + r.id);
+    div.classList.toggle("on", r.on);
+    div.querySelector(".kg").textContent = s.kg > 0.05 ? "−" + fmt(s.kg) + " " + t("perWeek") : "";
+    div.querySelector(".money").textContent = s.kg > 0.05
+      ? (Math.abs(s.money) > 0.5 ? (s.money > 0 ? t("perMonthMoney", { m: Math.round(s.money) }) : "+" + t("perMonthMoney", { m: Math.round(-s.money) })) : "")
+      : t("noSave");
+    box.appendChild(div);
+  });
+
+  buildCompare();
+  save();
+}
+
+// applyLang() swaps every labelled piece of text and redraws the parts built in js
+function applyLang() {
+  document.documentElement.lang = lang === "en" ? "en" : "zh-Hans";
+  document.querySelectorAll("[data-i18n]").forEach(n => { n.textContent = t(n.dataset.i18n); });
+  el("how").innerHTML = T[lang].how.map(x => `<li>${x}</li>`).join("");
+  el("btnEn").classList.toggle("on", lang === "en");
+  el("btnZh").classList.toggle("on", lang === "zh");
+  buildMenu();
+  buildRecs();
+  update();
+}
+
+// ---------- wiring ----------
+load();
+document.querySelectorAll("input:not([type=range]), select").forEach(n => {
+  if (!n.closest("#menu") && !n.closest("#recs")) n.addEventListener("input", update);
+});
+el("btnEn").onclick = () => { lang = "en"; applyLang(); };
+el("btnZh").onclick = () => { lang = "zh"; applyLang(); };
+el("btnAll").onclick = () => { RECS.forEach(r => r.on = true); buildRecs(); update(); };
+applyLang();
+</script>
+</body>
+</html>
